@@ -1,0 +1,20 @@
+{
+  "name": "aiwa-pos",
+  "version": "1.1.25",
+  "description": "Aiwa POS Application",
+  "license": "Proprietary",
+  "author": {
+    "name": "Aiwa",
+    "email": "aiwa@gmail.com",
+    "url": "https://aiwa.com"
+  },
+  "main": "./dist/main/main.js",
+  "scripts": {
+    "rebuild": "node -r ts-node/register ../../.erb/scripts/electron-rebuild.js",
+    "postinstall": "npm run rebuild && npm run link-modules",
+    "link-modules": "node -r ts-node/register ../../.erb/scripts/link-modules.ts"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.6.0"
+  }
+}

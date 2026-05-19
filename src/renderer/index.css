@@ -1,0 +1,448 @@
+@import 'tailwindcss';
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500;1,600&display=swap');
+
+/* ============================================================
+   Design tokens — single source of truth for the entire app.
+   Mirrors docs/DESIGN_SYSTEM.md. Tailwind v4 @theme makes these
+   usable as `bg-primary`, `text-primary-soft`, etc.
+   ============================================================ */
+@theme {
+  --font-sans:
+    'Inter', 'Poppins', ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-poppins:
+    'Poppins', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, sans-serif;
+
+  /* Brand — red, used for primary CTAs, destructive accents, active state */
+  --color-primary: #e63946;
+  --color-primary-hover: #c81e2c;
+  --color-primary-deep: #8e0d18;
+  --color-primary-soft: #ffe5e8;
+  --color-primary-tint: #fff1f3;
+  --color-accent: #ffc8cd;
+
+  /* Success / positive — used for prices and "added" state */
+  --color-success: #16a34a;
+  --color-success-deep: #15803d;
+  --color-success-soft: #dcfce7;
+  --color-success-tint: #f0fdf4;
+
+  /* Warning */
+  --color-warning: #f59e0b;
+  --color-warning-soft: #fef3c7;
+
+  /* Info / dietary indicators */
+  --color-info: #2563eb;
+  --color-info-soft: #dbeafe;
+
+  /* Surfaces */
+  --color-page: #eef0f3;
+  --color-surface: #ffffff;
+
+  /* Borders */
+  --color-line: #e2e5ea;
+  --color-line-strong: #cbd0d8;
+
+  /* Text */
+  --color-ink: #0f172a;
+  --color-ink-muted: #64748b;
+  --color-ink-subtle: #94a3b8;
+
+  /* Radius */
+  --radius-token-sm: 8px;
+  --radius-token-md: 12px;
+  --radius-token-lg: 20px;
+  --radius-token-xl: 28px;
+
+  /* Shadows */
+  --shadow-card:
+    0 30px 80px rgba(15, 23, 42, 0.1), 0 8px 24px rgba(15, 23, 42, 0.04);
+  --shadow-btn: 0 8px 20px rgba(230, 57, 70, 0.28);
+  --shadow-input: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-focus: 0 0 0 4px rgba(230, 57, 70, 0.15);
+}
+
+/* ============================================================
+   App-wide base + typography
+   ============================================================ */
+:root {
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family:
+    'Inter', 'Poppins', ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--color-page);
+  color: var(--color-ink);
+  letter-spacing: -0.005em;
+}
+
+* {
+  font-family: inherit;
+}
+
+/* Remove spin buttons from number inputs */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+}
+
+/* Tabular numerals for any element marked .tnum */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================
+   App-wide scrollbar — slim, brand-tinted
+   ============================================================ */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.12);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(230, 57, 70, 0.45);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+
+/* ============================================================
+   App-wide global selection
+   ============================================================ */
+::selection {
+  background: var(--color-primary-soft);
+  color: var(--color-primary-deep);
+}
+
+/* ============================================================
+   Sonner toast theme — applied app-wide via [data-sonner-toaster]
+   Solid white card, red accents for error/loading, no dull grays
+   ============================================================ */
+[data-sonner-toaster] {
+  --normal-bg: #ffffff;
+  --normal-border: var(--color-line);
+  --normal-text: var(--color-ink);
+
+  --success-bg: #ffffff;
+  --success-border: rgba(16, 185, 129, 0.25);
+  --success-text: #065f46;
+
+  --error-bg: var(--color-primary-soft);
+  --error-border: rgba(230, 57, 70, 0.35);
+  --error-text: var(--color-primary-deep);
+
+  --info-bg: #ffffff;
+  --info-border: rgba(230, 57, 70, 0.18);
+  --info-text: var(--color-primary-deep);
+
+  --warning-bg: #fff8eb;
+  --warning-border: rgba(245, 158, 11, 0.35);
+  --warning-text: #7a4900;
+
+  font-family: inherit;
+}
+
+[data-sonner-toaster] [data-sonner-toast] {
+  border-radius: var(--radius-token-md) !important;
+  box-shadow:
+    0 18px 40px rgba(15, 23, 42, 0.18),
+    0 6px 18px rgba(15, 23, 42, 0.08) !important;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+[data-sonner-toaster] [data-sonner-toast][data-type='error'] {
+  background: var(--color-primary-soft) !important;
+  border: 1px solid rgba(230, 57, 70, 0.35) !important;
+  color: var(--color-primary-deep) !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast][data-type='loading'] [data-icon] {
+  color: var(--color-primary) !important;
+}
+
+/* ============================================================
+   Reusable UI primitives (component layer)
+   Use these instead of pasting Tailwind color salads.
+   ============================================================ */
+@layer components {
+  /* Generic surface card */
+  .ds-card {
+    @apply rounded-2xl bg-white border border-[var(--color-line)] shadow-sm;
+  }
+
+  /* Inputs */
+  .ds-input {
+    @apply w-full px-4 py-3 rounded-xl border-[1.5px] border-[var(--color-line)]
+           bg-white text-[var(--color-ink)] text-[15px] font-medium
+           placeholder:text-[var(--color-ink-subtle)]
+           shadow-[0_1px_2px_rgba(15,23,42,0.04)]
+           transition-colors duration-150 outline-none;
+  }
+  .ds-input:hover {
+    @apply border-[var(--color-line-strong)];
+  }
+  .ds-input:focus {
+    border-color: var(--color-primary);
+    box-shadow: var(--shadow-focus);
+  }
+
+  /* Labels */
+  .ds-label {
+    @apply text-[11px] font-bold uppercase tracking-[0.12em]
+           text-[var(--color-ink-muted)];
+  }
+
+  /* Buttons */
+  .ds-btn {
+    @apply inline-flex items-center justify-center gap-2 font-semibold
+           rounded-xl px-5 py-3 text-[14px] tracking-[0.01em]
+           transition-all duration-150 cursor-pointer
+           disabled:opacity-55 disabled:cursor-not-allowed;
+  }
+  .ds-btn-primary {
+    background: var(--color-primary);
+    color: #fff;
+    border: 1.5px solid var(--color-primary);
+    box-shadow: var(--shadow-btn);
+  }
+  .ds-btn-primary:hover:not(:disabled) {
+    background: var(--color-primary-hover);
+    border-color: var(--color-primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 12px 26px rgba(230, 57, 70, 0.34);
+  }
+  .ds-btn-secondary {
+    background: #fff;
+    color: var(--color-ink);
+    border: 1.5px solid var(--color-line);
+    box-shadow: var(--shadow-input);
+  }
+  .ds-btn-secondary:hover:not(:disabled) {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background: var(--color-primary-tint);
+    transform: translateY(-1px);
+  }
+  .ds-btn-soft {
+    background: var(--color-primary-soft);
+    color: var(--color-primary-deep);
+    border: 1.5px solid rgba(230, 57, 70, 0.25);
+  }
+  .ds-btn-soft:hover:not(:disabled) {
+    background: var(--color-primary);
+    color: #fff;
+    border-color: var(--color-primary);
+    transform: translateY(-1px);
+  }
+  .ds-btn-ghost {
+    background: transparent;
+    color: var(--color-ink-muted);
+    border: 1.5px solid transparent;
+  }
+  .ds-btn-ghost:hover:not(:disabled) {
+    color: var(--color-primary);
+    background: var(--color-primary-soft);
+  }
+
+  /* Icon-only button */
+  .ds-iconbtn {
+    @apply inline-flex items-center justify-center w-10 h-10 rounded-xl
+           text-[var(--color-ink-muted)] bg-transparent border-none cursor-pointer
+           transition-colors duration-150;
+  }
+  .ds-iconbtn:hover {
+    color: var(--color-primary);
+    background: var(--color-primary-soft);
+  }
+
+  /* Chip / Pill */
+  .ds-chip {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md
+           text-[11px] font-semibold tracking-[0.02em];
+    background: var(--color-primary-tint);
+    color: var(--color-primary-deep);
+  }
+
+  /* Soft notice / status */
+  .ds-notice {
+    @apply flex items-center gap-2 px-3 py-2.5 rounded-xl text-[13px] font-semibold;
+    background: var(--color-primary-tint);
+    color: var(--color-primary-deep);
+    border: 1px solid rgba(230, 57, 70, 0.18);
+  }
+  .ds-notice-error {
+    background: var(--color-primary-soft);
+    color: var(--color-primary-deep);
+    border: 1px solid rgba(230, 57, 70, 0.35);
+  }
+}
+
+/* ============================================================
+   Legacy color shim — retargets common Tailwind color classes
+   used by un-refactored modals to the design system tokens.
+   This is a stop-gap so the brand color stays consistent until
+   each modal is rewritten. Scoped to dashboard surface so the
+   error boundary fallback (which uses bg-red-50) keeps working.
+   ============================================================ */
+
+/* Buttons — old blue / indigo / purple → red primary.
+   Green stays green (now used for prices and the success path).      */
+.bg-blue-500,
+.bg-blue-600,
+.bg-indigo-500,
+.bg-indigo-600,
+.bg-purple-500,
+.bg-purple-600 {
+  background-color: var(--color-primary) !important;
+}
+.hover\:bg-blue-600:hover,
+.hover\:bg-blue-700:hover,
+.hover\:bg-indigo-700:hover,
+.hover\:bg-purple-700:hover {
+  background-color: var(--color-primary-hover) !important;
+}
+.bg-green-500,
+.bg-green-600 {
+  background-color: var(--color-success) !important;
+}
+.hover\:bg-green-700:hover {
+  background-color: var(--color-success-deep) !important;
+}
+.text-green-600,
+.text-green-700 {
+  color: var(--color-success-deep) !important;
+}
+
+/* Soft / pill backgrounds */
+.bg-blue-50,
+.bg-indigo-50,
+.bg-purple-50 {
+  background-color: var(--color-primary-tint) !important;
+}
+.bg-blue-100,
+.bg-indigo-100,
+.bg-purple-100 {
+  background-color: var(--color-primary-soft) !important;
+}
+.hover\:bg-blue-50:hover,
+.hover\:bg-indigo-50:hover,
+.hover\:bg-purple-50:hover {
+  background-color: var(--color-primary-tint) !important;
+}
+.hover\:bg-blue-100:hover,
+.hover\:bg-indigo-100:hover,
+.hover\:bg-purple-100:hover {
+  background-color: var(--color-primary-soft) !important;
+}
+
+/* Borders */
+.border-blue-200,
+.border-blue-300,
+.border-blue-400,
+.border-blue-500,
+.border-blue-600,
+.border-indigo-500,
+.border-purple-500 {
+  border-color: var(--color-primary) !important;
+}
+.hover\:border-blue-300:hover,
+.hover\:border-blue-400:hover,
+.hover\:border-blue-500:hover,
+.hover\:border-indigo-500:hover {
+  border-color: var(--color-primary) !important;
+}
+
+/* Text */
+.text-blue-400,
+.text-blue-500,
+.text-blue-600,
+.text-blue-700,
+.text-indigo-500,
+.text-indigo-600,
+.text-purple-500,
+.text-purple-600,
+.text-purple-700 {
+  color: var(--color-primary-deep) !important;
+}
+.hover\:text-blue-500:hover,
+.hover\:text-blue-600:hover,
+.hover\:text-indigo-600:hover {
+  color: var(--color-primary) !important;
+}
+
+/* Focus rings */
+.focus\:ring-blue-500:focus,
+.focus\:ring-indigo-500:focus,
+.focus\:ring-purple-500:focus,
+.focus\:border-blue-500:focus,
+.focus\:border-indigo-500:focus {
+  --tw-ring-color: rgba(230, 57, 70, 0.45) !important;
+  box-shadow: var(--shadow-focus) !important;
+  border-color: var(--color-primary) !important;
+}
+
+/* Old utility: text-primary used by SideHeading (Tailwind v4 + theme now maps it) */
+.text-primary {
+  color: var(--color-primary) !important;
+}
+
+/* Tame full-black gray-900 backdrops to match Portal */
+.bg-gray-900.bg-opacity-50 {
+  background-color: rgba(15, 23, 42, 0.55) !important;
+}
+
+/* Old amber/orange "hold" buttons -> soft red variant */
+.bg-amber-500,
+.bg-amber-600,
+.bg-orange-500,
+.bg-orange-600,
+.bg-orange-800 {
+  background-color: var(--color-primary-soft) !important;
+  color: var(--color-primary-deep) !important;
+  border-color: rgba(230, 57, 70, 0.25);
+}
+.hover\:bg-amber-600:hover,
+.hover\:bg-amber-700:hover,
+.hover\:bg-orange-600:hover,
+.hover\:bg-orange-700:hover {
+  background-color: var(--color-primary) !important;
+  color: #fff !important;
+}
+.bg-amber-100 {
+  background-color: var(--color-primary-tint) !important;
+}
+.hover\:bg-amber-200:hover {
+  background-color: var(--color-primary-soft) !important;
+}
+.text-amber-800,
+.text-amber-900 {
+  color: var(--color-primary-deep) !important;
+}
+.border-amber-300,
+.border-amber-400 {
+  border-color: rgba(230, 57, 70, 0.3) !important;
+}
+
