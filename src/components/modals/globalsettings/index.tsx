@@ -212,7 +212,9 @@ const GlobalSettingsModal: React.FC<Props> = ({ onClose, onSave }) => {
           );
           const invoiceFormats = formatsRes?.message?.print_formats;
           if (Array.isArray(invoiceFormats)) {
-            setPrintFormats(invoiceFormats.map((f: any) => f.print_format));
+            setPrintFormats(
+              invoiceFormats.map((f: any) => f.name || f.print_format),
+            );
           }
 
           const orderFormatsRes = await window.api.get(
@@ -221,7 +223,9 @@ const GlobalSettingsModal: React.FC<Props> = ({ onClose, onSave }) => {
 
           const formats = orderFormatsRes?.message?.print_formats;
           if (Array.isArray(formats)) {
-            setOrderPrintFormats(formats.map((f: any) => f.print_format));
+            setOrderPrintFormats(
+              formats.map((f: any) => f.name || f.print_format),
+            );
           }
           console.log('Loaded print formats:', formats, invoiceFormats);
 

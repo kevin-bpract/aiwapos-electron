@@ -20,6 +20,110 @@ interface RestaurantSettingsModalProps {
   onSave: () => void;
 }
 
+// Brand tokens (kept inline; scoped to this modal — see docs/DESIGN_SYSTEM.md)
+const RED = '#E63946';
+const RED_HOVER = '#C81E2C';
+const RED_SOFT = '#FFE5E8';
+const TEXT = '#0F172A';
+const TEXT_MUTED = '#64748B';
+const TEXT_SUBTLE = '#94A3B8';
+const BORDER = '#E2E5EA';
+const BORDER_STRONG = '#CBD0D8';
+const SURFACE_SOFT = '#F7F8FA';
+
+const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <h3
+    style={{
+      margin: 0,
+      fontSize: 11,
+      fontWeight: 700,
+      color: TEXT_SUBTLE,
+      letterSpacing: '0.12em',
+      textTransform: 'uppercase',
+    }}
+  >
+    {children}
+  </h3>
+);
+
+const SliderCard: React.FC<{
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  onChange: (n: number) => void;
+}> = ({ label, value, min, max, step, onChange }) => {
+  const pct = ((value - min) / (max - min)) * 100;
+  return (
+    <div
+      style={{
+        background: '#FFFFFF',
+        border: `1px solid ${BORDER}`,
+        borderRadius: 12,
+        padding: '14px 16px',
+        boxShadow: '0 1px 2px rgba(15,23,42,0.04)',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 12,
+        }}
+      >
+        <span style={{ fontSize: 13, fontWeight: 600, color: TEXT }}>
+          {label}
+        </span>
+        <span
+          style={{
+            fontSize: 13,
+            fontWeight: 700,
+            color: RED,
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          {value}px
+        </span>
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="rsm-slider"
+        style={{
+          width: '100%',
+          height: 6,
+          appearance: 'none',
+          WebkitAppearance: 'none',
+          background: `linear-gradient(to right, ${RED} 0%, ${RED} ${pct}%, ${BORDER} ${pct}%, ${BORDER} 100%)`,
+          borderRadius: 999,
+          outline: 'none',
+          cursor: 'pointer',
+        }}
+      />
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          marginTop: 8,
+          fontSize: 11,
+          fontWeight: 500,
+          color: TEXT_SUBTLE,
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
+        <span>{min}px</span>
+        <span>{max}px</span>
+      </div>
+    </div>
+  );
+};
+
 const RestaurantSettingsModal: React.FC<RestaurantSettingsModalProps> = ({
   cardWidth,
   cardHeight,
@@ -31,106 +135,221 @@ const RestaurantSettingsModal: React.FC<RestaurantSettingsModalProps> = ({
   onSave,
 }) => {
   return (
-    <div className="flex flex-col min-w-[min(100vw-2rem,420px)] max-w-lg">
-      <div className="px-5 pt-2 pb-4 space-y-6 max-h-[min(70vh,520px)] overflow-y-auto">
-        <section className="space-y-3">
-          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">
-            Display
-          </h3>
-          <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-4 shadow-sm">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="font-medium text-slate-900">Product images</p>
-                <p className="text-sm text-slate-500 mt-0.5">
-                  Hide product photos on cards (updates live).
-                </p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={showProductImages}
-                onClick={() => onShowProductImagesChange(!showProductImages)}
-                className={`relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
-                  showProductImages ? 'bg-blue-600' : 'bg-slate-300'
-                }`}
+    <div
+      style={{
+        background: '#FFFFFF',
+        width: 'min(520px, 92vw)',
+        display: 'flex',
+        flexDirection: 'column',
+        fontFamily:
+          "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+        color: TEXT,
+      }}
+    >
+      {/* Slider thumb + focus styling (scoped via class) */}
+      <style>{`
+        .rsm-slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          background: #FFFFFF;
+          border: 2px solid ${RED};
+          box-shadow: 0 2px 6px rgba(230,57,70,0.35);
+          cursor: pointer;
+          transition: transform 0.12s ease, box-shadow 0.18s ease;
+        }
+        .rsm-slider::-webkit-slider-thumb:hover { transform: scale(1.08); }
+        .rsm-slider::-webkit-slider-thumb:active { transform: scale(0.96); }
+        .rsm-slider:focus-visible::-webkit-slider-thumb {
+          box-shadow: 0 0 0 4px rgba(230,57,70,0.15);
+        }
+        .rsm-slider::-moz-range-thumb {
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          background: #FFFFFF;
+          border: 2px solid ${RED};
+          box-shadow: 0 2px 6px rgba(230,57,70,0.35);
+          cursor: pointer;
+        }
+        .rsm-btn-primary:hover { background: ${RED_HOVER} !important; transform: translateY(-1px); box-shadow: 0 12px 26px rgba(230,57,70,0.34) !important; }
+        .rsm-btn-primary:active { transform: translateY(0); }
+        .rsm-btn-secondary:hover { border-color: ${RED} !important; color: ${RED} !important; background: #FFF1F3 !important; }
+      `}</style>
+
+      <div
+        style={{
+          padding: '20px 24px 24px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 24,
+          maxHeight: 'min(70vh, 560px)',
+          overflowY: 'auto',
+        }}
+      >
+        {/* Display section */}
+        <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <SectionLabel>Display</SectionLabel>
+          <div
+            style={{
+              background: SURFACE_SOFT,
+              border: `1px solid ${BORDER}`,
+              borderRadius: 12,
+              padding: '14px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 16,
+            }}
+          >
+            <div style={{ minWidth: 0 }}>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 15,
+                  fontWeight: 600,
+                  color: TEXT,
+                }}
               >
-                <span
-                  className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition ${
-                    showProductImages ? 'translate-x-5' : 'translate-x-0.5'
-                  }`}
-                />
-              </button>
+                Product images
+              </p>
+              <p
+                style={{
+                  margin: '4px 0 0',
+                  fontSize: 13,
+                  fontWeight: 400,
+                  color: TEXT_MUTED,
+                  lineHeight: 1.4,
+                }}
+              >
+                Show product photos on cards (updates live).
+              </p>
             </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={showProductImages}
+              aria-label="Toggle product images"
+              onClick={() => onShowProductImagesChange(!showProductImages)}
+              style={{
+                position: 'relative',
+                flexShrink: 0,
+                width: 44,
+                height: 26,
+                borderRadius: 999,
+                border: 'none',
+                cursor: 'pointer',
+                padding: 0,
+                background: showProductImages ? RED : BORDER_STRONG,
+                transition: 'background 0.18s ease',
+              }}
+            >
+              <span
+                style={{
+                  position: 'absolute',
+                  top: 3,
+                  left: showProductImages ? 21 : 3,
+                  width: 20,
+                  height: 20,
+                  borderRadius: '50%',
+                  background: '#FFFFFF',
+                  boxShadow: '0 1px 3px rgba(15,23,42,0.18)',
+                  transition: 'left 0.18s cubic-bezier(0.2, 0.8, 0.2, 1)',
+                }}
+              />
+            </button>
           </div>
         </section>
 
-        <section className="space-y-3">
-          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">
-            Card size
-          </h3>
-          <p className="text-xs text-slate-500 -mt-1">
-            Adjust sliders — product cards update in real time.
-          </p>
-          <div className="space-y-3">
-            <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-medium text-slate-800">Width</span>
-                <span className="text-sm tabular-nums font-semibold text-blue-700">
-                  {cardWidth}px
-                </span>
-              </div>
-              <input
-                type="range"
-                min={RESTAURANT_CARD.W_MIN}
-                max={RESTAURANT_CARD.W_MAX}
-                step={RESTAURANT_CARD.STEP}
-                value={cardWidth}
-                onChange={(e) => onCardWidthChange(Number(e.target.value))}
-                className="w-full h-2 rounded-full bg-slate-200 accent-blue-600 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/60 focus-visible:ring-offset-2"
-              />
-              <div className="flex justify-between text-xs text-slate-400 mt-2">
-                <span>{RESTAURANT_CARD.W_MIN}px</span>
-                <span>{RESTAURANT_CARD.W_MAX}px</span>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-medium text-slate-800">Height</span>
-                <span className="text-sm tabular-nums font-semibold text-blue-700">
-                  {cardHeight}px
-                </span>
-              </div>
-              <input
-                type="range"
-                min={RESTAURANT_CARD.H_MIN}
-                max={RESTAURANT_CARD.H_MAX}
-                step={RESTAURANT_CARD.STEP}
-                value={cardHeight}
-                onChange={(e) => onCardHeightChange(Number(e.target.value))}
-                className="w-full h-2 rounded-full bg-slate-200 accent-blue-600 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/60 focus-visible:ring-offset-2"
-              />
-              <div className="flex justify-between text-xs text-slate-400 mt-2">
-                <span>{RESTAURANT_CARD.H_MIN}px</span>
-                <span>{RESTAURANT_CARD.H_MAX}px</span>
-              </div>
-            </div>
+        {/* Card size section */}
+        <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <SectionLabel>Card size</SectionLabel>
+            <p
+              style={{
+                margin: 0,
+                fontSize: 13,
+                fontWeight: 400,
+                color: TEXT_MUTED,
+              }}
+            >
+              Adjust sliders — product cards update in real time.
+            </p>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <SliderCard
+              label="Width"
+              value={cardWidth}
+              min={RESTAURANT_CARD.W_MIN}
+              max={RESTAURANT_CARD.W_MAX}
+              step={RESTAURANT_CARD.STEP}
+              onChange={onCardWidthChange}
+            />
+            <SliderCard
+              label="Height"
+              value={cardHeight}
+              min={RESTAURANT_CARD.H_MIN}
+              max={RESTAURANT_CARD.H_MAX}
+              step={RESTAURANT_CARD.STEP}
+              onChange={onCardHeightChange}
+            />
           </div>
         </section>
       </div>
 
-      <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-slate-200 bg-slate-50/90">
+      {/* Footer */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+          gap: 10,
+          padding: '16px 24px',
+          borderTop: `1px solid ${BORDER}`,
+          background: SURFACE_SOFT,
+        }}
+      >
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2.5 rounded-xl text-sm font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
+          className="rsm-btn-secondary"
+          style={{
+            padding: '12px 22px',
+            borderRadius: 12,
+            fontSize: 15,
+            fontWeight: 600,
+            letterSpacing: '0.01em',
+            color: TEXT,
+            background: '#FFFFFF',
+            border: `1.5px solid ${BORDER}`,
+            boxShadow: '0 1px 2px rgba(15,23,42,0.04)',
+            cursor: 'pointer',
+            transition:
+              'background 0.18s ease, color 0.18s ease, border-color 0.18s ease',
+          }}
         >
           Cancel
         </button>
         <button
           type="button"
           onClick={onSave}
-          className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+          className="rsm-btn-primary"
+          style={{
+            padding: '12px 26px',
+            borderRadius: 12,
+            fontSize: 15,
+            fontWeight: 600,
+            letterSpacing: '0.01em',
+            color: '#FFFFFF',
+            background: RED,
+            border: 'none',
+            boxShadow: '0 8px 20px rgba(230,57,70,0.28)',
+            cursor: 'pointer',
+            transition:
+              'background 0.18s ease, transform 0.12s ease, box-shadow 0.18s ease',
+          }}
         >
           Save
         </button>

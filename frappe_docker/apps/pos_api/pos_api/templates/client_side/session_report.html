@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Z-Report</title>
+<style>
+  body { font-family: monospace; width: 80mm; margin: 0; padding: 6px; font-size: 12px; }
+  hr { border: 0; border-top: 1px dashed #000; }
+  .center { text-align: center; }
+  table { width: 100%; border-collapse: collapse; }
+</style>
+</head>
+<body>
+<script>
+  (function(){
+    var d = window.RECEIPT_DATA || {};
+    function esc(s){ return (s==null?'':String(s)).replace(/[&<>]/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}); }
+    function f(n){ return (Number(n)||0).toFixed(2); }
+    var denoms = (d.denomination_details||[]).map(function(r){
+      return '<tr><td>'+esc(r.denomination)+'</td><td align="right">'+(r.qty||0)+'</td><td align="right">'+f(r.amount)+'</td></tr>';
+    }).join('');
+    document.body.innerHTML =
+      '<div class="center"><h2 style="margin:0">Z-REPORT</h2><small>Shift Summary</small></div><hr>'+
+      '<div>Cashier: <b>'+esc(d.user)+'</b></div>'+
+      '<div>Date: '+esc(d.date)+'</div>'+
+      '<div>Opening: '+esc(d.session_opening_entry)+'</div>'+
+      '<div>Closing: '+esc(d.session_closing_entry)+'</div><hr>'+
+      '<table>'+
+        '<tr><td>Opening Cash</td><td align="right">'+f(d.opening_balance)+'</td></tr>'+
+        '<tr><td>Cash Sales</td><td align="right">'+f(d.cash_sales)+'</td></tr>'+
+        '<tr><td>Card Sales</td><td align="right">'+f(d.card_sales)+'</td></tr>'+
+        '<tr><td>Credit Sales</td><td align="right">'+f(d.credit_sales)+'</td></tr>'+
+        '<tr><td>Invoices</td><td align="right">'+(d.total_invoices||0)+'</td></tr>'+
+        '<tr><td>Items Sold</td><td align="right">'+(d.total_quantity||0)+'</td></tr>'+
+      '</table><hr>'+
+      '<b>Denominations</b>'+
+      '<table><thead><tr><th align="left">Note</th><th align="right">Qty</th><th align="right">Amt</th></tr></thead>'+
+      '<tbody>'+denoms+'</tbody></table><hr>'+
+      '<table>'+
+        '<tr><td>Counted Cash</td><td align="right">'+f(d.cash_counted)+'</td></tr>'+
+        '<tr><td><b>Difference</b></td><td align="right"><b>'+f(d.difference)+'</b></td></tr>'+
+      '</table>'+
+      '<hr><div class="center"><small>--- End of Report ---</small></div>';
+  })();
+</script>
+</body>
+</html>

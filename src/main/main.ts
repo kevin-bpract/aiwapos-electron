@@ -729,10 +729,15 @@ ipcMain.handle('printers:printHTML', async (_event, html: string, printerName?: 
     let pageSize: string | { width: number; height: number } = 'A4';
     let isThermal = false;
     if (options?.pageSize === '80mm') {
-      pageSize = { width: 80000, height: 200000 }; // 80mm × 200mm
+      // 80mm roll → 72mm printable width on standard POS heads (POS-80C,
+      // XPrinter, Epson TM, etc.). Height matches one of the CUPS-supported
+      // media sizes (X72MMY297MM) so the driver doesn't fall back to a
+      // mismatched default and cut early.
+      pageSize = { width: 72000, height: 297000 };
       isThermal = true;
     } else if (options?.pageSize === '58mm') {
-      pageSize = { width: 58000, height: 200000 }; // 58mm × 200mm
+      // 58mm rolls have ~48mm printable width.
+      pageSize = { width: 48000, height: 297000 };
       isThermal = true;
     } else if (options?.pageSize) {
       pageSize = options.pageSize;
@@ -747,9 +752,58 @@ ipcMain.handle('printers:printHTML', async (_event, html: string, printerName?: 
         : 794; // A4 at 96 DPI ≈ 794px
     win.setSize(viewportWidth, 1200);
 
+    // For thermal paper, Frappe's server-rendered printview wraps the format
+    // in `.print-format-gutter` with `padding: 0.75in` (and several !important
+    // overrides on `.print-format`). The print format's inline CSS loses these
+    // specificity ties, leaving a big left margin. Inject a final-pass override
+    // stylesheet so the last rule wins.
+    let printHtml = html;
+    if (isThermal) {
+      // Use the actual printable width (72mm for "80mm", 48mm for "58mm").
+      const widthMm = typeof pageSize === 'object'
+        ? Math.round(pageSize.width / 1000)
+        : 72;
+      const thermalOverride = `
+<style>
+  @page { margin: 0 !important; size: ${widthMm}mm auto !important; }
+  html, body {
+    width: ${widthMm}mm !important;
+    min-width: 0 !important;
+    max-width: ${widthMm}mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+  .action-banner, .print-hide { display: none !important; }
+  .print-format-gutter,
+  .print-format-gutter > * {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-shadow: none !important;
+    border: 0 !important;
+  }
+  .print-format {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 2mm !important;
+    box-sizing: border-box !important;
+  }
+  .print-format * { box-sizing: border-box !important; }
+</style>`;
+      // Append before </body> so it loads AFTER everything else (last wins).
+      printHtml = /<\/body>/i.test(html)
+        ? html.replace(/<\/body>/i, `${thermalOverride}</body>`)
+        : html + thermalOverride;
+    }
+
     // Load HTML into the existing window
     const tLoad = Date.now();
-    await win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
+    await win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(printHtml));
     console.log(`[PRINT-TIMING-MAIN] loadURL = ${Date.now() - tLoad}ms`);
 
     // Print
@@ -759,8 +813,9 @@ ipcMain.handle('printers:printHTML', async (_event, html: string, printerName?: 
         silent: true,
         deviceName: printerName || '',
         printBackground: true,
+        // 'none' falls back to driver default on some platforms — force zero.
         margins: isThermal
-          ? { marginType: 'none' }
+          ? ({ marginType: 'custom', top: 0, bottom: 0, left: 0, right: 0 } as any)
           : { marginType: 'printableArea' },
         pageSize: pageSize as any
       }, (success, errorType) => {

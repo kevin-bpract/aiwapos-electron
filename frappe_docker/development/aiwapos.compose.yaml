@@ -1,0 +1,19 @@
+## Aiwa POS dev override
+## Usage:
+##   cd frappe_docker
+##   docker compose \
+##     -f development/docker-compose.yml \
+##     -f development/aiwapos.compose.yaml \
+##     up -d
+##
+## Then exec into the `frappe` container and run /workspace/development/setup_aiwapos.sh
+
+services:
+  frappe:
+    ports:
+      - "8000:8000"
+      - "9000:9000"
+    environment:
+      SITE_NAME: aiwapos.localhost
+    volumes:
+      - ..:/workspace:cached

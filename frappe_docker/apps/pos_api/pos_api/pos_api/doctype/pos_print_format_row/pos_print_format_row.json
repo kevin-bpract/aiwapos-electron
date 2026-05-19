@@ -1,0 +1,26 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-05-18 00:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": ["print_format", "label", "doctype_name", "is_default", "description"],
+ "fields": [
+  {"fieldname": "print_format", "fieldtype": "Link", "label": "Print Format", "options": "Print Format", "in_list_view": 1, "reqd": 1},
+  {"fieldname": "label", "fieldtype": "Data", "label": "Label", "in_list_view": 1},
+  {"fieldname": "doctype_name", "fieldtype": "Data", "label": "DocType", "in_list_view": 1},
+  {"fieldname": "is_default", "fieldtype": "Check", "label": "Default", "in_list_view": 1},
+  {"fieldname": "description", "fieldtype": "Small Text", "label": "Description"}
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2026-05-18 00:00:00",
+ "modified_by": "Administrator",
+ "module": "POS API",
+ "name": "POS Print Format Row",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

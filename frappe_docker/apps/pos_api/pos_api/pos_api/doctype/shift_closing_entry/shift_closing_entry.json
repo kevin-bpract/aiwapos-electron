@@ -1,0 +1,51 @@
+{
+ "actions": [],
+ "autoname": "naming_series:",
+ "creation": "2026-05-18 00:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "is_submittable": 1,
+ "track_changes": 1,
+ "field_order": [
+  "naming_series", "shift_opening_entry", "user", "company", "shift_date",
+  "cash_in_hand", "cash_count", "difference",
+  "totals_section", "cash_sales", "card_sales", "credit_sales",
+  "total_sales", "total_quantity", "invoices_count",
+  "denominations_section", "amount_denomination",
+  "remarks"
+ ],
+ "fields": [
+  {"fieldname": "naming_series", "fieldtype": "Select", "label": "Series", "options": "SCE-.YYYY.-", "default": "SCE-.YYYY.-", "reqd": 1},
+  {"fieldname": "shift_opening_entry", "fieldtype": "Link", "label": "Shift Opening Entry", "options": "Shift Opening Entry", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "user", "fieldtype": "Link", "label": "User", "options": "User", "in_list_view": 1},
+  {"fieldname": "company", "fieldtype": "Link", "label": "Company", "options": "Company"},
+  {"fieldname": "shift_date", "fieldtype": "Date", "label": "Shift Date", "default": "Today"},
+  {"fieldname": "cash_in_hand", "fieldtype": "Currency", "label": "Opening Cash"},
+  {"fieldname": "cash_count", "fieldtype": "Currency", "label": "Cash Counted"},
+  {"fieldname": "difference", "fieldtype": "Currency", "label": "Difference"},
+  {"fieldname": "totals_section", "fieldtype": "Section Break", "label": "Sales Totals"},
+  {"fieldname": "cash_sales", "fieldtype": "Currency", "label": "Cash Sales"},
+  {"fieldname": "card_sales", "fieldtype": "Currency", "label": "Card Sales"},
+  {"fieldname": "credit_sales", "fieldtype": "Currency", "label": "Credit Sales"},
+  {"fieldname": "total_sales", "fieldtype": "Currency", "label": "Total Sales", "in_list_view": 1},
+  {"fieldname": "total_quantity", "fieldtype": "Float", "label": "Total Quantity"},
+  {"fieldname": "invoices_count", "fieldtype": "Int", "label": "Invoices Count"},
+  {"fieldname": "denominations_section", "fieldtype": "Section Break", "label": "Denominations"},
+  {"fieldname": "amount_denomination", "fieldtype": "Table", "label": "Denominations", "options": "Shift Denomination Row"},
+  {"fieldname": "remarks", "fieldtype": "Small Text", "label": "Remarks"}
+ ],
+ "links": [],
+ "modified": "2026-05-18 00:00:00",
+ "modified_by": "Administrator",
+ "module": "POS API",
+ "name": "Shift Closing Entry",
+ "owner": "Administrator",
+ "permissions": [
+  {"create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "role": "System Manager", "share": 1, "write": 1, "submit": 1, "cancel": 1, "amend": 1},
+  {"create": 1, "read": 1, "write": 1, "print": 1, "submit": 1, "role": "Cashier"},
+  {"create": 1, "read": 1, "write": 1, "print": 1, "submit": 1, "cancel": 1, "role": "Restaurant Manager"}
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

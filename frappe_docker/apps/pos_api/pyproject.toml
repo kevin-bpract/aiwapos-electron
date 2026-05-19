@@ -1,0 +1,20 @@
+[project]
+name = "pos_api"
+version = "0.1.0"
+description = "Aiwa POS backend — custom Frappe app exposing the API surface consumed by the Aiwa POS Electron client."
+authors = [{ name = "Aiwa", email = "dev@aiwa.test" }]
+license = { text = "MIT" }
+requires-python = ">=3.10"
+readme = "README.md"
+dependencies = [
+    # frappe and erpnext are provided by the bench, not pip-installed here
+    "qrcode>=7.4",
+    "pillow>=10.0",
+]
+
+[build-system]
+requires = ["flit_core>=3.4"]
+build-backend = "flit_core.buildapi"
+
+[tool.flit.module]
+name = "pos_api"

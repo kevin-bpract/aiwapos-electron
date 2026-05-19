@@ -1,0 +1,148 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Receipt</title>
+<style>
+  @page { margin: 0 !important; size: 72mm auto !important; }
+  * { box-sizing: border-box; }
+  html, body {
+    width: 72mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff;
+    color: #000;
+    font-family: 'Courier New', Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.25;
+    -webkit-print-color-adjust: exact;
+  }
+  .r {
+    /* No outer padding — printer driver handles its own non-printable edge.
+       Add a tiny breathing room so glyphs don't touch the cut line. */
+    padding: 0 1mm;
+  }
+  .c  { text-align: center; }
+  .r-r{ text-align: right; }
+  .b  { font-weight: 700; }
+  .sm { font-size: 11px; }
+  .xs { font-size: 10px; }
+  .lg { font-size: 14px; }
+  .xl { font-size: 16px; font-weight: 700; }
+
+  .hr-d { border: 0; border-top: 1px dashed #000; margin: 4px 0; }
+  .hr-s { border: 0; border-top: 1px solid #000; margin: 4px 0; }
+
+  .invno {
+    border: 1.5px solid #000;
+    padding: 4px 0;
+    margin: 2px 0 6px;
+    text-align: center;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  td, th { padding: 1px 0; vertical-align: top; word-wrap: break-word; }
+
+  /* Meta key/value strip */
+  .kv td.k { width: 30%; }
+  .kv td.s { width: 4%; text-align: center; }
+
+  /* Item lines */
+  .items col.n  { width: 56%; }
+  .items col.q  { width: 12%; }
+  .items col.r  { width: 16%; }
+  .items col.a  { width: 16%; }
+  .items th {
+    font-weight: 700;
+    border-top: 1px solid #000;
+    border-bottom: 1px solid #000;
+    padding: 2px 0;
+  }
+  .items td { padding: 2px 0; }
+
+  .totals td { padding: 2px 0; }
+  .grand td {
+    font-size: 14px;
+    font-weight: 700;
+    border-top: 1px solid #000;
+    border-bottom: 1px solid #000;
+    padding: 3px 0;
+  }
+</style>
+</head>
+<body>
+<div class="r">
+
+  <div class="c b lg">{{#if company_name}}{{company_name}}{{else}}STORE{{/if}}</div>
+  {{#if company_address}}<div class="c xs">{{company_address}}</div>{{/if}}
+  {{#if company_phone}}<div class="c xs">Tel: {{company_phone}}</div>{{/if}}
+  {{#if company_tax_id}}<div class="c xs">VAT: {{company_tax_id}}</div>{{/if}}
+
+  <div class="invno">{{invoice_number}}</div>
+
+  <table class="kv sm">
+    <tr><td class="k">Date</td><td class="s">:</td><td>{{timestamp}}</td></tr>
+    <tr><td class="k">Customer</td><td class="s">:</td><td>{{#if customer_name}}{{customer_name}}{{else}}Cash Customer{{/if}}</td></tr>
+    {{#if customer_phone}}<tr><td class="k">Phone</td><td class="s">:</td><td>{{customer_phone}}</td></tr>{{/if}}
+    {{#if order_type}}<tr><td class="k">Type</td><td class="s">:</td><td>{{order_type}}</td></tr>{{/if}}
+    {{#if reference_number}}<tr><td class="k">Ref</td><td class="s">:</td><td>{{reference_number}}</td></tr>{{/if}}
+  </table>
+
+  <table class="items">
+    <colgroup>
+      <col class="n" /><col class="q" /><col class="r" /><col class="a" />
+    </colgroup>
+    <thead>
+      <tr>
+        <th style="text-align:left;">Item</th>
+        <th class="r-r">Qty</th>
+        <th class="r-r">Rate</th>
+        <th class="r-r">Amt</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each items}}
+      <tr>
+        <td colspan="4">{{item_name}}</td>
+      </tr>
+      <tr>
+        <td class="xs">{{#if uom}}{{uom}}{{/if}}</td>
+        <td class="r-r">{{qty}}</td>
+        <td class="r-r">{{rate}}</td>
+        <td class="r-r">{{amount}}</td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+
+  <table class="totals sm">
+    <tr><td>Subtotal</td><td class="r-r">{{subtotal}}</td></tr>
+    {{#if discount_amount}}<tr><td>Discount</td><td class="r-r">-{{discount_amount}}</td></tr>{{/if}}
+    {{#if charges}}<tr><td>Charges</td><td class="r-r">{{charges}}</td></tr>{{/if}}
+    {{#if delivery_charge_amount}}<tr><td>Delivery</td><td class="r-r">{{delivery_charge_amount}}</td></tr>{{/if}}
+    {{#each taxes}}
+    <tr><td>{{description}}{{#if rate}} ({{rate}}%){{/if}}</td><td class="r-r">{{tax_amount}}</td></tr>
+    {{/each}}
+    <tr class="grand"><td>TOTAL</td><td class="r-r">{{total_amount}}</td></tr>
+  </table>
+
+  {{#if payments.length}}
+  <table class="totals sm">
+    {{#each payments}}
+    <tr><td>{{mode_of_payment}}</td><td class="r-r">{{amount}}</td></tr>
+    {{/each}}
+    {{#if credit_remainder}}<tr><td>Credit</td><td class="r-r">{{credit_remainder}}</td></tr>{{/if}}
+    {{#if change}}<tr><td>Change</td><td class="r-r">{{change}}</td></tr>{{/if}}
+  </table>
+  {{/if}}
+
+  <div class="hr-d"></div>
+  <div class="c sm">{{#if footer_text}}{{footer_text}}{{else}}Thank you, please visit again.{{/if}}</div>
+  <div style="height:6mm;"></div>
+
+</div>
+</body>
+</html>

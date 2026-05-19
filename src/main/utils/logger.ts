@@ -132,7 +132,18 @@ export const logError = (error: any) => {
     }
   } else if (error.request) {
     writeLog('Error: No response received from server');
-    writeLog(`Request Details: ${JSON.stringify(error.request, null, 2).substring(0, 500)}`);
+    try {
+      const req = error.request;
+      const safe = {
+        method: req.method,
+        path: req.path,
+        host: req.host || req.getHeader?.('host'),
+        protocol: req.protocol,
+      };
+      writeLog(`Request Details: ${JSON.stringify(safe, null, 2)}`);
+    } catch {
+      writeLog('Request Details: [Unable to stringify]');
+    }
   } else {
     writeLog(`Error Message: ${error.message || 'Unknown error'}`);
   }

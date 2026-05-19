@@ -1,0 +1,38 @@
+[
+ {
+  "doctype": "Print Format",
+  "name": "POS Receipt - Aiwa",
+  "doc_type": "Sales Invoice",
+  "module": "POS API",
+  "standard": "Yes",
+  "print_format_type": "Jinja",
+  "custom_format": 1,
+  "disabled": 0,
+  "default_print_language": "en",
+  "html": "<div style=\"font-family: monospace; width: 80mm; padding: 6px;\">\n  <div style=\"text-align:center;\">\n    <h3 style=\"margin:0;\">{{ doc.company }}</h3>\n    <small>{{ frappe.db.get_value('Company', doc.company, 'tax_id') or '' }}</small><br/>\n    <strong>TAX INVOICE</strong>\n  </div>\n  <hr/>\n  <div>Invoice: <strong>{{ doc.name }}</strong></div>\n  <div>Date: {{ frappe.format(doc.posting_date, {'fieldtype':'Date'}) }} {{ doc.posting_time or '' }}</div>\n  <div>Customer: {{ doc.customer_name }}</div>\n  {% if doc.table_no %}<div>Table: <strong>{{ doc.table_no }}</strong></div>{% endif %}\n  {% if doc.restaurant_order_type %}<div>Type: {{ doc.restaurant_order_type|upper }}</div>{% endif %}\n  <hr/>\n  <table style=\"width:100%; border-collapse:collapse; font-size:12px;\">\n    <thead>\n      <tr><th align=\"left\">Item</th><th align=\"right\">Qty</th><th align=\"right\">Rate</th><th align=\"right\">Amt</th></tr>\n    </thead>\n    <tbody>\n      {% for it in doc.items %}\n      <tr>\n        <td>{{ it.item_name }}</td>\n        <td align=\"right\">{{ it.qty }}</td>\n        <td align=\"right\">{{ \"%.2f\"|format(it.rate) }}</td>\n        <td align=\"right\">{{ \"%.2f\"|format(it.amount) }}</td>\n      </tr>\n      {% endfor %}\n    </tbody>\n  </table>\n  <hr/>\n  <table style=\"width:100%; font-size:12px;\">\n    <tr><td>Subtotal</td><td align=\"right\">{{ \"%.2f\"|format(doc.net_total or 0) }}</td></tr>\n    {% if doc.total_taxes_and_charges %}<tr><td>Tax</td><td align=\"right\">{{ \"%.2f\"|format(doc.total_taxes_and_charges) }}</td></tr>{% endif %}\n    {% if doc.discount_amount %}<tr><td>Discount</td><td align=\"right\">-{{ \"%.2f\"|format(doc.discount_amount) }}</td></tr>{% endif %}\n    <tr><td><strong>TOTAL ({{ doc.currency }})</strong></td><td align=\"right\"><strong>{{ \"%.2f\"|format(doc.grand_total or 0) }}</strong></td></tr>\n  </table>\n  <hr/>\n  {% if doc.payments %}\n  <table style=\"width:100%; font-size:12px;\">\n    {% for p in doc.payments %}\n    <tr><td>{{ p.mode_of_payment }}</td><td align=\"right\">{{ \"%.2f\"|format(p.amount) }}</td></tr>\n    {% endfor %}\n  </table>\n  <hr/>\n  {% endif %}\n  <div style=\"text-align:center; font-size:11px;\">\n    Thank you, please visit again!<br/>\n    {{ doc.name }} &middot; {{ doc.owner }}\n  </div>\n</div>"
+ },
+ {
+  "doctype": "Print Format",
+  "name": "KOT - Aiwa",
+  "doc_type": "Sales Order",
+  "module": "POS API",
+  "standard": "Yes",
+  "print_format_type": "Jinja",
+  "custom_format": 1,
+  "disabled": 0,
+  "default_print_language": "en",
+  "html": "<div style=\"font-family: monospace; width: 80mm; padding: 6px;\">\n  <div style=\"text-align:center;\">\n    <h2 style=\"margin:0;\">KOT</h2>\n    <strong>{{ (doc.restaurant_order_type or 'DINING')|upper }}</strong>\n  </div>\n  <hr/>\n  <div>Order: <strong>{{ doc.name }}</strong></div>\n  <div>Date: {{ frappe.format(doc.transaction_date, {'fieldtype':'Date'}) }}</div>\n  {% if doc.table_no %}<div style=\"font-size:18px;\">Table: <strong>{{ doc.table_no }}</strong></div>{% endif %}\n  <div>Cashier: {{ doc.owner }}</div>\n  <hr/>\n  <table style=\"width:100%; border-collapse:collapse; font-size:14px;\">\n    <thead>\n      <tr><th align=\"left\">Qty</th><th align=\"left\">Item</th></tr>\n    </thead>\n    <tbody>\n      {% for it in doc.items %}\n      <tr>\n        <td align=\"left\" style=\"font-size:18px; vertical-align:top;\"><strong>{{ it.qty|int }}&times;</strong></td>\n        <td>{{ it.item_name }}{% if it.description and it.description != it.item_name %}<br/><small>{{ it.description }}</small>{% endif %}</td>\n      </tr>\n      {% endfor %}\n    </tbody>\n  </table>\n  {% if doc.order_notes %}\n  <hr/>\n  <div style=\"font-size:13px;\"><strong>Notes:</strong> {{ doc.order_notes }}</div>\n  {% endif %}\n  <hr/>\n  <div style=\"text-align:center; font-size:11px;\">\n    Items: {{ doc.items|length }} &middot; Qty: {{ doc.total_qty|int if doc.total_qty else 0 }}\n  </div>\n</div>"
+ },
+ {
+  "doctype": "Print Format",
+  "name": "Z-Report - Aiwa",
+  "doc_type": "Shift Closing Entry",
+  "module": "POS API",
+  "standard": "Yes",
+  "print_format_type": "Jinja",
+  "custom_format": 1,
+  "disabled": 0,
+  "default_print_language": "en",
+  "html": "<div style=\"font-family: monospace; width: 80mm; padding: 6px;\">\n  <div style=\"text-align:center;\">\n    <h2 style=\"margin:0;\">Z-REPORT</h2>\n    <small>Shift Summary</small>\n  </div>\n  <hr/>\n  <div>Cashier: <strong>{{ doc.user }}</strong></div>\n  <div>Date: {{ frappe.format(doc.shift_date, {'fieldtype':'Date'}) }}</div>\n  <div>Opening: {{ doc.shift_opening_entry }}</div>\n  <div>Closing: {{ doc.name }}</div>\n  <hr/>\n  <table style=\"width:100%; font-size:12px;\">\n    <tr><td>Opening Cash</td><td align=\"right\">{{ \"%.2f\"|format(doc.cash_in_hand or 0) }}</td></tr>\n    <tr><td>Cash Sales</td><td align=\"right\">{{ \"%.2f\"|format(doc.cash_sales or 0) }}</td></tr>\n    <tr><td>Card Sales</td><td align=\"right\">{{ \"%.2f\"|format(doc.card_sales or 0) }}</td></tr>\n    <tr><td>Credit Sales</td><td align=\"right\">{{ \"%.2f\"|format(doc.credit_sales or 0) }}</td></tr>\n    <tr><td><strong>Total Sales</strong></td><td align=\"right\"><strong>{{ \"%.2f\"|format(doc.total_sales or 0) }}</strong></td></tr>\n    <tr><td>Invoices</td><td align=\"right\">{{ doc.invoices_count or 0 }}</td></tr>\n    <tr><td>Items Sold (qty)</td><td align=\"right\">{{ doc.total_quantity or 0 }}</td></tr>\n  </table>\n  <hr/>\n  <strong>Denominations</strong>\n  <table style=\"width:100%; font-size:12px;\">\n    <thead><tr><th align=\"left\">Note</th><th align=\"right\">Qty</th><th align=\"right\">Amt</th></tr></thead>\n    <tbody>\n      {% for d in doc.amount_denomination %}\n      <tr><td>{{ d.denomination }}</td><td align=\"right\">{{ d.quantity }}</td><td align=\"right\">{{ \"%.2f\"|format(d.amount or 0) }}</td></tr>\n      {% endfor %}\n    </tbody>\n  </table>\n  <hr/>\n  <table style=\"width:100%; font-size:12px;\">\n    <tr><td>Counted Cash</td><td align=\"right\">{{ \"%.2f\"|format(doc.cash_count or 0) }}</td></tr>\n    <tr><td>Expected Cash</td><td align=\"right\">{{ \"%.2f\"|format((doc.cash_in_hand or 0) + (doc.cash_sales or 0)) }}</td></tr>\n    <tr><td><strong>Difference</strong></td><td align=\"right\"><strong>{{ \"%.2f\"|format(doc.difference or 0) }}</strong></td></tr>\n  </table>\n  <hr/>\n  {% if doc.remarks %}<div style=\"font-size:11px;\">Remarks: {{ doc.remarks }}</div>{% endif %}\n  <div style=\"text-align:center; font-size:11px;\">--- End of Report ---</div>\n</div>"
+ }
+]

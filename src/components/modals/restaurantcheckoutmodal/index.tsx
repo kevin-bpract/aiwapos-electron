@@ -155,7 +155,7 @@ const NumberInput: React.FC<{
     ${
       disabled
         ? 'bg-slate-100 text-slate-400 cursor-not-allowed border-slate-200'
-        : 'bg-white text-slate-900 border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+        : 'bg-white text-slate-900 border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#E63946]/30 focus:border-transparent'
     }
     ${className}
   `}
@@ -848,15 +848,16 @@ const RestaurantCheckoutModal: React.FC<RestaurantCheckoutModalProps> = ({
       console.log(
         `[INVOICE-TIMING] createPOSInvoice API = ${(performance.now() - tApi).toFixed(1)}ms`,
       );
+      console.log('[RestaurantCheckout] POS Invoice response:', response);
 
-      if (
+      const invoiceName =
+        response?.message?.invoice?.name || response?.message?.name;
+      const isSuccess =
         response?.message?.success_key === 1 ||
-        response?.message?.message === 'Sales invoice created successfully'
-      ) {
-        // Extract invoice name. The structure might be response.message.invoice.name or response.message.name
-        const invoiceName =
-          response.message.invoice?.name || response.message.name;
+        response?.message?.message === 'Sales invoice created successfully' ||
+        !!invoiceName;
 
+      if (isSuccess) {
         if (!invoiceName) {
           toast.error('Invoice created but ID not found for printing.');
           return;
@@ -883,35 +884,37 @@ const RestaurantCheckoutModal: React.FC<RestaurantCheckoutModalProps> = ({
           orderType,
         };
 
-        // KOT always prints immediately (kitchen needs it right away),
-        // regardless of askBeforeInvoicePrint or submittingInBackground.
-        await printKotIfConfigured({
-          source: { sales_invoice: invoiceName },
-          print,
-          title: `KOT - ${invoiceName}`,
-        });
+        // Post-success side effects (printing, callbacks) are isolated so a
+        // failure here does NOT show "Failed to create invoice" — the invoice
+        // was already created on the server.
+        try {
+          await printKotIfConfigured({
+            source: { sales_invoice: invoiceName },
+            print,
+            title: `KOT - ${invoiceName}`,
+          });
 
-        // Check if we should ask before printing the invoice
-        const printSettings = await window.printerSettings.get();
-        const shouldAskBeforePrint =
-          printSettings?.askBeforeInvoicePrint === true;
+          const printSettings = await window.printerSettings.get();
+          const shouldAskBeforePrint =
+            printSettings?.askBeforeInvoicePrint === true;
 
-        if (shouldAskBeforePrint) {
-          // Native blocking confirm runs before React can unmount this modal.
-          const shouldPrint = window.confirm(
-            `Invoice ${invoiceName} created successfully.\n\nPrint it now?`,
-          );
-          if (shouldPrint) {
+          if (shouldAskBeforePrint) {
+            const shouldPrint = window.confirm(
+              `Invoice ${invoiceName} created successfully.\n\nPrint it now?`,
+            );
+            if (shouldPrint) {
+              await executeInvoicePrint(invoiceName);
+            }
+          } else {
             await executeInvoicePrint(invoiceName);
           }
-          onComplete?.(checkoutData);
-          onClose();
-        } else {
-          // Auto-print invoice (KOT already printed above)
-          await executeInvoicePrint(invoiceName);
-          onComplete?.(checkoutData);
-          onClose();
+        } catch (postErr) {
+          console.error('Post-invoice side effects failed:', postErr);
+          toast.error('Invoice created, but printing failed.');
         }
+
+        onComplete?.(checkoutData);
+        onClose();
       } else if (response?.message?.error_type === 'shift_not_open') {
         toast.error(
           response.message.message ||
@@ -987,27 +990,31 @@ const RestaurantCheckoutModal: React.FC<RestaurantCheckoutModalProps> = ({
   return ReactDOM.createPortal(
     <>
       <Toaster richColors closeButton />
-      <div className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/50 backdrop-blur-sm">
+      <div className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-slate-900/60 backdrop-blur-sm">
         {/* Modal Container: Fixed Size, Centered, No floating rounding */}
-        <div className="bg-white w-full max-w-7xl h-[85vh] rounded-md flex flex-col overflow-hidden">
+        <div className="bg-white w-full max-w-7xl h-[88vh] rounded-2xl flex flex-col overflow-hidden shadow-[0_30px_80px_rgba(15,23,42,0.18),0_8px_24px_rgba(15,23,42,0.08)] ring-1 ring-slate-900/5">
           {/* Header Zone (Fixed Height) */}
           <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-4">
-              <div className="p-2 bg-blue-600">
-                <Receipt className="w-6 h-6 text-white" />
+              <div
+                className="p-2.5 rounded-xl flex items-center justify-center"
+                style={{ backgroundColor: '#E63946', boxShadow: '0 8px 20px rgba(230,57,70,0.32)' }}
+              >
+                <Receipt className="w-6 h-6 text-white" strokeWidth={2.25} />
               </div>
               <div className="leading-tight">
-                <h2 className="text-xl font-bold tracking-wide">Checkout</h2>
-                <div className="text-slate-400 text-xs font-medium uppercase tracking-wider">
+                <h2 className="text-xl font-bold tracking-tight">Checkout</h2>
+                <div className="text-slate-400 text-[11px] font-semibold uppercase tracking-[0.14em] mt-0.5">
                   Bill #{getNextBillNumber()}
                 </div>
               </div>
             </div>
             <button
               onClick={onClose}
+              aria-label="Close checkout"
               className="p-2 hover:bg-white/10 rounded-full transition-colors"
             >
-              <X className="w-8 h-8 text-slate-400 hover:text-white" />
+              <X className="w-7 h-7 text-slate-400 hover:text-white" />
             </button>
           </div>
 
@@ -1017,16 +1024,21 @@ const RestaurantCheckoutModal: React.FC<RestaurantCheckoutModalProps> = ({
             <div className="w-[30%] bg-slate-50 flex flex-col border-r border-slate-200">
               {/* Order Type Selector */}
               <div className="p-4 bg-white border-b border-slate-100">
-                <div className="flex bg-slate-100 p-1 rounded-sm">
+                <div className="flex bg-slate-100 p-1 rounded-lg gap-1">
                   {['dining', 'parcel', 'delivery'].map((type) => (
                     <button
                       key={type}
                       onClick={() => setOrderType(type as any)}
-                      className={`flex-1 py-3 px-2 rounded-sm text-sm font-bold uppercase tracking-wide transition-all ${
+                      className={`flex-1 py-2.5 px-2 rounded-md text-[13px] font-bold uppercase tracking-[0.08em] transition-all ${
                         orderType === type
-                          ? 'bg-white text-blue-700'
+                          ? 'bg-white text-slate-900 shadow-[0_1px_2px_rgba(15,23,42,0.06)]'
                           : 'text-slate-400 hover:text-slate-600'
                       }`}
+                      style={
+                        orderType === type
+                          ? { color: '#0F172A' }
+                          : undefined
+                      }
                     >
                       {type}
                     </button>
@@ -1035,9 +1047,9 @@ const RestaurantCheckoutModal: React.FC<RestaurantCheckoutModalProps> = ({
               </div>
 
               {/* Customer Search & Info */}
-              <div className="p-6 space-y-4 flex-1 overflow-y-auto">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+              <div className="p-5 space-y-4 flex-1 overflow-y-auto">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.12em]">
                     Customer
                   </label>
                   <div className="relative flex-1">
@@ -1053,47 +1065,47 @@ const RestaurantCheckoutModal: React.FC<RestaurantCheckoutModalProps> = ({
                       }
                       onClick={handleCustomerInputClick}
                       readOnly
-                      className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-md focus:border-blue-500 focus:ring-0 font-bold text-slate-700 transition-all text-lg placeholder:font-normal cursor-pointer hover:bg-slate-50"
+                      className="w-full pl-12 pr-4 py-3.5 bg-white border-[1.5px] border-slate-200 rounded-xl font-semibold text-slate-900 transition-all text-[15px] placeholder:font-normal placeholder:text-slate-400 cursor-pointer hover:border-slate-300 focus:border-[#E63946] focus:ring-4 focus:ring-[#E63946]/15 focus:outline-none shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
                       placeholder="Select Customer..."
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                <div className="grid grid-cols-1 gap-3.5">
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.12em]">
                       Contact
                     </label>
                     <input
                       type="text"
                       value={contactNumber}
                       onChange={(e) => setContactNumber(e.target.value)}
-                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-md focus:border-blue-500 focus:ring-0 font-semibold text-slate-700"
+                      className="w-full px-4 py-3 bg-white border-[1.5px] border-slate-200 rounded-xl font-semibold text-slate-900 text-[15px] placeholder:font-normal placeholder:text-slate-400 hover:border-slate-300 focus:border-[#E63946] focus:ring-4 focus:ring-[#E63946]/15 focus:outline-none transition-all shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
                       placeholder="Phone Number"
                     />
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.12em]">
                       Reference
                     </label>
                     <input
                       type="text"
                       value={refNumber}
                       onChange={(e) => setRefNumber(e.target.value)}
-                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-md focus:border-blue-500 focus:ring-0 font-semibold text-slate-700"
+                      className="w-full px-4 py-3 bg-white border-[1.5px] border-slate-200 rounded-xl font-semibold text-slate-900 text-[15px] placeholder:font-normal placeholder:text-slate-400 hover:border-slate-300 focus:border-[#E63946] focus:ring-4 focus:ring-[#E63946]/15 focus:outline-none transition-all shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
                       placeholder="Table / Order Ref"
                     />
                   </div>
                 </div>
 
-                <div className="h-px bg-slate-200 my-2"></div>
+                <div className="h-px bg-slate-200/80"></div>
 
                 <div
                   className={`${orderType === 'delivery' ? 'grid grid-cols-2' : 'grid-cols-1'} grid gap-3`}
                 >
                   {orderType === 'delivery' && (
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.12em]">
                         Delivery Chg.
                       </label>
                       <input
@@ -1115,12 +1127,12 @@ const RestaurantCheckoutModal: React.FC<RestaurantCheckoutModalProps> = ({
                           setDeliveryCharges(allowed);
                         }}
                         onFocus={(e) => e.target.select()}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white font-semibold text-slate-900 focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3.5 py-2.5 border-[1.5px] border-slate-200 rounded-xl bg-white font-semibold text-slate-900 tabular-nums hover:border-slate-300 focus:border-[#E63946] focus:ring-4 focus:ring-[#E63946]/15 focus:outline-none transition-all"
                       />
                     </div>
                   )}
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.12em]">
                       Add. Discount
                     </label>
                     <input
@@ -1142,18 +1154,50 @@ const RestaurantCheckoutModal: React.FC<RestaurantCheckoutModalProps> = ({
                         setAdditionalDiscount(allowed);
                       }}
                       onFocus={(e) => e.target.select()}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white font-semibold text-slate-900 focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3.5 py-2.5 border-[1.5px] border-slate-200 rounded-xl bg-white font-semibold text-slate-900 tabular-nums hover:border-slate-300 focus:border-[#E63946] focus:ring-4 focus:ring-[#E63946]/15 focus:outline-none transition-all"
                     />
                   </div>
+                </div>
+
+                {/* Compact summary fills the empty space */}
+                <div className="mt-2 rounded-xl bg-white border border-slate-200 p-4 space-y-2.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+                  <div className="flex justify-between text-[13px] font-medium text-slate-500">
+                    <span>Items</span>
+                    <span className="text-slate-900 font-semibold tabular-nums">
+                      {validItems.length}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-[13px] font-medium text-slate-500">
+                    <span>Subtotal</span>
+                    <span className="text-slate-900 font-semibold tabular-nums">
+                      {formatCurrency(total)}
+                    </span>
+                  </div>
+                  {(discount > 0 || parseFloat(additionalDiscount) > 0) && (
+                    <div className="flex justify-between text-[13px] font-medium text-slate-500">
+                      <span>Discount</span>
+                      <span className="text-emerald-600 font-semibold tabular-nums">
+                        −{formatCurrency(discount + (parseFloat(additionalDiscount) || 0))}
+                      </span>
+                    </div>
+                  )}
+                  {charges > 0 && (
+                    <div className="flex justify-between text-[13px] font-medium text-slate-500">
+                      <span>Charges</span>
+                      <span className="text-slate-900 font-semibold tabular-nums">
+                        +{formatCurrency(charges)}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Net Payable Anchor */}
-              <div className="mt-auto p-6 bg-white border-t border-slate-200">
-                <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">
+              <div className="mt-auto p-5 bg-white border-t border-slate-200">
+                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.14em] mb-1">
                   Total Payable
                 </div>
-                <div className="text-5xl font-black text-slate-900 tracking-tight tabular-nums">
+                <div className="text-[44px] leading-none font-extrabold text-slate-900 tracking-tight tabular-nums">
                   {formatCurrency(netAmount)}
                 </div>
               </div>
@@ -1163,47 +1207,58 @@ const RestaurantCheckoutModal: React.FC<RestaurantCheckoutModalProps> = ({
             <div className="w-[35%] bg-white flex flex-col border-r border-slate-200 relative z-10">
               {/* Payment Methods */}
               <div className="p-4 bg-slate-50 border-b border-slate-200">
-                <div className="flex gap-3 h-24">
-                  {paymentMethods.map((method) => (
-                    <button
-                      key={method.value}
-                      onClick={() => handlePaymentMethodChange(method.value)}
-                      className={`flex-1 rounded-md border-2 flex flex-col items-center justify-center gap-2 transition-all duration-200 ${
-                        paymentMethod === method.value
-                          ? 'bg-white border-blue-600 text-blue-700'
-                          : 'bg-slate-100 border-transparent text-slate-400 hover:bg-white hover:border-slate-300'
-                      }`}
-                    >
-                      {React.cloneElement(
-                        method.icon as React.ReactElement<any>,
-                        { className: 'w-6 h-6' },
-                      )}
-                      <span className="text-xs font-black uppercase tracking-wide">
-                        {method.label}
-                      </span>
-                    </button>
-                  ))}
+                <div className="flex gap-3 h-[88px]">
+                  {paymentMethods.map((method) => {
+                    const active = paymentMethod === method.value;
+                    return (
+                      <button
+                        key={method.value}
+                        onClick={() => handlePaymentMethodChange(method.value)}
+                        className={`flex-1 rounded-xl border-[1.5px] flex flex-col items-center justify-center gap-1.5 transition-all duration-150 ${
+                          active
+                            ? 'bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
+                            : 'bg-white/60 border-transparent text-slate-400 hover:bg-white hover:border-slate-200 hover:text-slate-600'
+                        }`}
+                        style={
+                          active
+                            ? { borderColor: '#E63946', color: '#E63946' }
+                            : undefined
+                        }
+                      >
+                        {React.cloneElement(
+                          method.icon as React.ReactElement<any>,
+                          { className: 'w-[22px] h-[22px]' },
+                        )}
+                        <span className="text-[11px] font-bold uppercase tracking-[0.1em]">
+                          {method.label}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
               {/* Payment Ledger / Inputs */}
-              <div className="flex-1 p-6 overflow-y-auto space-y-4">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+              <div className="flex-1 p-5 overflow-y-auto space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.12em]">
                     Payment Breakdown
                   </label>
                   {change < 0 && creditRemainder <= 0 ? (
-                    <span className="text-xs font-bold text-red-600 bg-red-50 px-2 py-1 rounded">
+                    <span
+                      className="text-[11px] font-bold px-2 py-1 rounded-md tabular-nums"
+                      style={{ backgroundColor: '#FFE5E8', color: '#8E0D18' }}
+                    >
                       DUE: {formatCurrency(Math.abs(change))}
                     </span>
                   ) : change >= 0 ? (
-                    <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded">
+                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-md tabular-nums">
                       CHANGE: {formatCurrency(change)}
                     </span>
                   ) : null}
                 </div>
                 {paymentMethod === 'credit' && (
-                  <p className="text-xs text-slate-500 -mt-2">
+                  <p className="text-[12px] text-slate-500 leading-snug -mt-1">
                     Enter amount in Cash/Bank etc.; the rest will be recorded as
                     credit.
                   </p>
@@ -1214,101 +1269,115 @@ const RestaurantCheckoutModal: React.FC<RestaurantCheckoutModalProps> = ({
                     Loading...
                   </div>
                 ) : (
-                  paymentModes.map((mode) => (
-                    <div
-                      key={mode.name}
-                      className={`
-                            relative transition-all duration-200 border rounded-md overflow-hidden
+                  paymentModes.map((mode) => {
+                    const isFocused = focusedPaymentField === mode.name;
+                    return (
+                      <div
+                        key={mode.name}
+                        className={`
+                            relative transition-all duration-150 border-[1.5px] rounded-xl overflow-hidden cursor-pointer
                             ${
-                              focusedPaymentField === mode.name
-                                ? 'border-blue-500 bg-blue-50/10'
-                                : 'border-slate-100 hover:border-slate-300 bg-slate-50'
+                              isFocused
+                                ? 'bg-white shadow-[0_0_0_4px_rgba(230,57,70,0.12)]'
+                                : 'border-slate-200 hover:border-slate-300 bg-slate-50/60'
                             }
                             ${isFieldDisabled(mode.name) ? 'opacity-40 grayscale pointer-events-none' : ''}
                           `}
-                      onClick={() => {
-                        handlePaymentFieldClick(mode.name);
-                        const input = document.getElementById(
-                          `payment-input-${mode.name}`,
-                        ) as HTMLInputElement;
-                        if (input) input.focus();
-                      }}
-                    >
-                      <div className="absolute top-2 left-3 text-xs font-bold text-slate-400 uppercase tracking-wider pointer-events-none">
-                        {mode.name}
+                        style={isFocused ? { borderColor: '#E63946' } : undefined}
+                        onClick={() => {
+                          handlePaymentFieldClick(mode.name);
+                          const input = document.getElementById(
+                            `payment-input-${mode.name}`,
+                          ) as HTMLInputElement;
+                          if (input) input.focus();
+                        }}
+                      >
+                        <div className="absolute top-2 left-3.5 text-[10px] font-bold text-slate-400 uppercase tracking-[0.12em] pointer-events-none">
+                          {mode.name}
+                        </div>
+                        <NumberInput
+                          id={`payment-input-${mode.name}`}
+                          label=""
+                          value={paymentValues[mode.name] || ''}
+                          onChange={(value) =>
+                            handlePaymentValueChange(mode.name, value)
+                          }
+                          onFocus={() => setFocusedPaymentField(mode.name)}
+                          fullWidth
+                          disabled={isFieldDisabled(mode.name)}
+                          className={`!text-[28px] !font-extrabold !p-4 !pt-6 !bg-transparent !border-none !shadow-none text-right h-[72px] tabular-nums ${isFocused ? '!text-[#E63946]' : 'text-slate-700'}`}
+                        />
                       </div>
-                      <NumberInput
-                        id={`payment-input-${mode.name}`}
-                        label=""
-                        value={paymentValues[mode.name] || ''}
-                        onChange={(value) =>
-                          handlePaymentValueChange(mode.name, value)
-                        }
-                        onFocus={() => setFocusedPaymentField(mode.name)}
-                        fullWidth
-                        disabled={isFieldDisabled(mode.name)}
-                        className={`!text-3xl font-black !p-4 !pt-6 !bg-transparent !border-none !shadow-none text-right h-20 ${focusedPaymentField === mode.name ? 'text-blue-700' : 'text-slate-700'}`}
-                      />
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
 
               {/* Invoice Summary Card */}
-              <div className="p-6 bg-slate-50 border-t border-slate-200">
-                <div className="space-y-3">
-                  <div className="flex justify-between text-sm text-slate-500 font-medium">
+              <div className="px-5 py-4 bg-slate-50 border-t border-slate-200">
+                <div className="space-y-2.5">
+                  <div className="flex justify-between text-[13px] text-slate-500 font-medium">
                     <span>Subtotal</span>
-                    <span className="text-slate-700">
+                    <span className="text-slate-700 tabular-nums">
                       {formatCurrency(total)}
                     </span>
                   </div>
                   {charges > 0 && (
-                    <div className="flex justify-between text-sm text-slate-500 font-medium">
+                    <div className="flex justify-between text-[13px] text-slate-500 font-medium">
                       <span>Charges</span>
-                      <span className="text-orange-600">
+                      <span className="text-slate-700 tabular-nums">
                         +{formatCurrency(charges)}
                       </span>
                     </div>
                   )}
                   {(discount > 0 || parseFloat(additionalDiscount) > 0) && (
-                    <div className="flex justify-between text-sm text-slate-500 font-medium">
+                    <div className="flex justify-between text-[13px] text-slate-500 font-medium">
                       <span>Discount</span>
-                      <span className="text-green-600">
-                        -
-                        {formatCurrency(
-                          discount + (parseFloat(additionalDiscount) || 0),
-                        )}
+                      <span className="text-emerald-600 tabular-nums">
+                        −{formatCurrency(discount + (parseFloat(additionalDiscount) || 0))}
                       </span>
                     </div>
                   )}
                   {orderType === 'delivery' &&
                     parseFloat(deliveryCharges) > 0 && (
-                      <div className="flex justify-between text-sm text-slate-500 font-medium">
+                      <div className="flex justify-between text-[13px] text-slate-500 font-medium">
                         <span>Delivery Chg.</span>
-                        <span className="text-orange-600">
+                        <span className="text-slate-700 tabular-nums">
                           +{formatCurrency(parseFloat(deliveryCharges))}
                         </span>
                       </div>
                     )}
-                  <div className="h-px bg-slate-200 my-2"></div>
                   {paymentMethod === 'credit' && creditRemainder > 0 && (
-                    <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-3 mb-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-bold text-amber-800 uppercase">
-                          Credit (remaining)
-                        </span>
-                        <span className="text-xl font-black text-amber-700 tabular-nums">
-                          {formatCurrency(creditRemainder)}
-                        </span>
-                      </div>
+                    <div
+                      className="rounded-xl p-3 mt-2 flex justify-between items-center"
+                      style={{
+                        backgroundColor: '#FFF1F3',
+                        border: '1px solid rgba(230,57,70,0.25)',
+                      }}
+                    >
+                      <span
+                        className="text-[11px] font-bold uppercase tracking-[0.12em]"
+                        style={{ color: '#8E0D18' }}
+                      >
+                        Credit (remaining)
+                      </span>
+                      <span
+                        className="text-lg font-extrabold tabular-nums"
+                        style={{ color: '#8E0D18' }}
+                      >
+                        {formatCurrency(creditRemainder)}
+                      </span>
                     </div>
                   )}
+                  <div className="h-px bg-slate-200/80 my-1"></div>
                   <div className="flex justify-between items-baseline">
-                    <span className="text-base font-bold text-slate-900 uppercase">
+                    <span className="text-[13px] font-bold text-slate-900 uppercase tracking-[0.08em]">
                       Total Due
                     </span>
-                    <span className="text-3xl font-black text-blue-600">
+                    <span
+                      className="text-[26px] font-extrabold tabular-nums tracking-tight"
+                      style={{ color: '#E63946' }}
+                    >
                       {formatCurrency(netAmount)}
                     </span>
                   </div>
@@ -1317,9 +1386,9 @@ const RestaurantCheckoutModal: React.FC<RestaurantCheckoutModalProps> = ({
             </div>
 
             {/* ZONE 3: Command Pad (35%) */}
-            <div className="w-[35%] bg-slate-100 flex flex-col p-4 gap-4">
+            <div className="w-[35%] bg-slate-100 flex flex-col p-4 gap-3">
               {/* Quick Amounts */}
-              <div className="grid grid-cols-4 gap-2 h-24 shrink-0">
+              <div className="grid grid-cols-4 gap-2 h-[88px] shrink-0">
                 {[10, 20, 50, 100, 200, 500, 1000, 2000].map((amount) => (
                   <button
                     key={amount}
@@ -1353,7 +1422,7 @@ const RestaurantCheckoutModal: React.FC<RestaurantCheckoutModalProps> = ({
                         }, 0);
                       }
                     }}
-                    className="bg-white hover:bg-blue-50 hover:border-blue-200 border border-slate-200 rounded-md text-slate-600 hover:text-blue-700 font-bold text-lg active:scale-95 transition-all"
+                    className="bg-white border-[1.5px] border-slate-200 rounded-xl text-slate-700 font-bold text-[17px] tabular-nums active:scale-[0.97] transition-all shadow-[0_1px_2px_rgba(15,23,42,0.04)] hover:border-[#E63946] hover:text-[#E63946] hover:bg-[#FFF1F3]"
                   >
                     {amount}
                   </button>
@@ -1361,23 +1430,23 @@ const RestaurantCheckoutModal: React.FC<RestaurantCheckoutModalProps> = ({
               </div>
 
               {/* Numeric Keypad - Expanded */}
-              <div className="flex-1 bg-white rounded-md border border-slate-200 p-2 overflow-hidden flex flex-col">
+              <div className="flex-1 bg-white rounded-xl border border-slate-200 p-2 overflow-hidden flex flex-col shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
                 {showNumericKeypad && (
-                  <div className="flex-1 w-full h-full [&>div]:h-full [&>div]:shadow-none [&>div]:border-none [&_button]:!h-full [&_button]:!text-2xl [&_button]:!rounded-md">
+                  <div className="flex-1 w-full h-full [&>div]:h-full [&>div]:shadow-none [&>div]:border-none [&_button]:!h-full [&_button]:!text-2xl [&_button]:!rounded-lg">
                     <NumericKeypad className="w-full h-full !p-0" />
                   </div>
                 )}
               </div>
 
               {/* Primary Actions */}
-              <div className="grid grid-cols-2 gap-3 h-24 shrink-0">
+              <div className="grid grid-cols-2 gap-3 h-[72px] shrink-0">
                 <button
                   onClick={handleCreateOrder}
                   disabled={isCreatingOrder || validItems.length === 0}
-                  className={`rounded-md font-black text-lg uppercase tracking-wide transition-transform active:scale-95 flex flex-col items-center justify-center ${
+                  className={`rounded-xl font-bold text-[15px] uppercase tracking-[0.06em] transition-all active:translate-y-0 flex items-center justify-center ${
                     isCreatingOrder || validItems.length === 0
                       ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                      : 'bg-white border-2 border-indigo-600 text-indigo-700 hover:bg-indigo-50'
+                      : 'bg-white border-[1.5px] border-slate-200 text-slate-900 hover:border-[#E63946] hover:text-[#E63946] hover:bg-[#FFF1F3] shadow-[0_1px_2px_rgba(15,23,42,0.04)] hover:-translate-y-[1px]'
                   }`}
                 >
                   <span>Create Order</span>
@@ -1390,20 +1459,52 @@ const RestaurantCheckoutModal: React.FC<RestaurantCheckoutModalProps> = ({
                     validItems.length === 0 ||
                     (change < -0.01 && paymentMethod === 'cash')
                   }
-                  className={`rounded-md font-black text-xl uppercase tracking-wide transition-transform active:scale-95 flex flex-col items-center justify-center ${
+                  className={`rounded-xl font-bold text-[16px] uppercase tracking-[0.06em] transition-all active:translate-y-0 flex items-center justify-center text-white ${
                     isCreatingInvoice ||
                     validItems.length === 0 ||
                     (change < -0.01 && paymentMethod === 'cash')
-                      ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                      ? 'bg-slate-200 !text-slate-400 cursor-not-allowed'
+                      : 'hover:-translate-y-[1px]'
                   }`}
+                  style={
+                    isCreatingInvoice ||
+                    validItems.length === 0 ||
+                    (change < -0.01 && paymentMethod === 'cash')
+                      ? undefined
+                      : {
+                          backgroundColor: '#E63946',
+                          boxShadow: '0 8px 20px rgba(230,57,70,0.28)',
+                        }
+                  }
+                  onMouseEnter={(e) => {
+                    if (
+                      !(
+                        isCreatingInvoice ||
+                        validItems.length === 0 ||
+                        (change < -0.01 && paymentMethod === 'cash')
+                      )
+                    ) {
+                      e.currentTarget.style.backgroundColor = '#C81E2C';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (
+                      !(
+                        isCreatingInvoice ||
+                        validItems.length === 0 ||
+                        (change < -0.01 && paymentMethod === 'cash')
+                      )
+                    ) {
+                      e.currentTarget.style.backgroundColor = '#E63946';
+                    }
+                  }}
                   title={
                     paymentMethod === 'credit' && creditRemainder > 0
                       ? `Pay ${formatCurrency(totalPaid)} now; ${formatCurrency(creditRemainder)} as credit`
                       : undefined
                   }
                 >
-                  <span>Pay & Print</span>
+                  <span>Pay &amp; Print</span>
                 </button>
               </div>
             </div>
@@ -1424,7 +1525,7 @@ const RestaurantCheckoutModal: React.FC<RestaurantCheckoutModalProps> = ({
               width: `${dropdownPosition.width}px`,
               zIndex: 9999,
             }}
-            className="bg-white border border-gray-300 rounded-lg shadow-2xl max-h-96 overflow-hidden flex flex-col"
+            className="bg-white border border-slate-200 rounded-2xl shadow-[0_30px_80px_rgba(15,23,42,0.18),0_8px_24px_rgba(15,23,42,0.06)] max-h-96 overflow-hidden flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-3 border-b border-gray-200">
@@ -1453,7 +1554,7 @@ const RestaurantCheckoutModal: React.FC<RestaurantCheckoutModalProps> = ({
                   }
                 }}
                 placeholder="Search customers..."
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-3 border-[1.5px] border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-[#E63946]/15 focus:border-[#E63946] transition-all"
                 autoFocus
               />
             </div>
@@ -1467,7 +1568,7 @@ const RestaurantCheckoutModal: React.FC<RestaurantCheckoutModalProps> = ({
                   <div
                     key={customer.name}
                     ref={index === selectedIndex ? selectedItemRef : null}
-                    className={`p-4 cursor-pointer border-b border-gray-100 last:border-b-0 hover:bg-blue-50 transition-colors ${index === selectedIndex ? 'bg-blue-50' : ''}`}
+                    className={`p-4 cursor-pointer border-b border-slate-100 last:border-b-0 hover:bg-[#FFF1F3] transition-colors ${index === selectedIndex ? 'bg-[#FFF1F3]' : ''}`}
                     onClick={() => handleCustomerSelect(customer)}
                     onMouseEnter={() => setSelectedIndex(index)}
                   >

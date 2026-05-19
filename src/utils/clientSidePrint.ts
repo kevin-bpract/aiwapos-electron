@@ -19,7 +19,10 @@ function templateKey(format: ReceiptFormat): string {
 }
 
 function templateName(format: ReceiptFormat): string {
-  return `sales_invoice_${format}`;
+  // Backend registry keys (see pos_api/api/kot.py CLIENT_TEMPLATES_REGISTRY):
+  //   standard -> invoice_standard
+  //   compact  -> invoice_compact (falls back to invoice_standard if absent)
+  return format === 'standard' ? 'invoice_standard' : `invoice_${format}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -39,10 +42,13 @@ export async function fetchAndCacheTemplate(
   // want lives at res.message.message. Fall back to res.message in case the
   // wrapper is ever flattened.
   const payload = res?.message?.message ?? res?.message;
-  if (!payload?.success || !payload.template) {
-    throw new Error(
-      `Failed to fetch receipt template (${format}): ${typeof payload === 'string' ? payload : JSON.stringify(payload ?? res)}`,
-    );
+  const ok = payload?.success_key === 1 || payload?.success === true;
+  if (!ok || !payload?.template) {
+    const detail =
+      typeof payload === 'string'
+        ? payload
+        : payload?.message || JSON.stringify(payload ?? res);
+    throw new Error(`Failed to fetch receipt template (${format}): ${detail}`);
   }
 
   const html: string = payload.template;
@@ -200,6 +206,15 @@ export function mapInvoiceDataToTemplate(raw: any): Record<string, any> {
       ? raw.payments.map((p: any) => ({
           mode_of_payment: p.mode_of_payment,
           amount: fmt(p.amount),
+        }))
+      : [],
+
+    // Tax rows (one per Sales Taxes and Charges line)
+    taxes: Array.isArray(raw.taxes)
+      ? raw.taxes.map((t: any) => ({
+          description: t.description || t.account_head || 'Tax',
+          rate: t.rate != null ? Number(t.rate) : null,
+          tax_amount: fmt(t.tax_amount),
         }))
       : [],
 

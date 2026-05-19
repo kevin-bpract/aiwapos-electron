@@ -211,7 +211,7 @@ const NumericKeypad: React.FC<NumericKeypadProps> = ({ className = '' }) => {
             type="button"
             onMouseDown={(e) => e.preventDefault()}
             onClick={handleEnter}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-bold transition-all duration-200 px-3 py-4 border-r border-b border-white/10"
+            className="flex-1 bg-[#E63946] hover:bg-[#C81E2C] active:bg-[#8E0D18] text-white text-xs font-bold transition-all duration-200 px-3 py-4 border-r border-b border-white/10"
           >
             ENTER
           </button>

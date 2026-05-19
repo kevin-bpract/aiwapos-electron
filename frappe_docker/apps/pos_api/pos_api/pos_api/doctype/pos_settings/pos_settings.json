@@ -1,0 +1,48 @@
+{
+ "actions": [],
+ "creation": "2026-05-18 00:00:00",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "issingle": 1,
+ "field_order": [
+  "company", "view_all_transaction_role", "default_target_warehouse",
+  "is_this_tax_included_in_basic_rate", "enable_customer_based_price_list",
+  "override_sales_team_in_customer", "payment_entry_based_on_sales_person",
+  "deduction_account", "cost_center", "edit_item_rate",
+  "table_list",
+  "mode_of_payment_details_section", "mode_of_payment_details",
+  "sales_person_details_section", "sales_person_details",
+  "print_format_details_section", "print_format_details"
+ ],
+ "fields": [
+  {"fieldname": "company", "fieldtype": "Link", "label": "Company", "options": "Company", "reqd": 1},
+  {"fieldname": "view_all_transaction_role", "fieldtype": "Link", "label": "View All Transaction Role", "options": "Role"},
+  {"fieldname": "default_target_warehouse", "fieldtype": "Link", "label": "Default Target Warehouse", "options": "Warehouse"},
+  {"fieldname": "is_this_tax_included_in_basic_rate", "fieldtype": "Check", "label": "Tax Included in Basic Rate"},
+  {"fieldname": "enable_customer_based_price_list", "fieldtype": "Check", "label": "Enable Customer-Based Price List"},
+  {"fieldname": "override_sales_team_in_customer", "fieldtype": "Check", "label": "Override Sales Team in Customer"},
+  {"fieldname": "payment_entry_based_on_sales_person", "fieldtype": "Check", "label": "Payment Entry Based on Sales Person"},
+  {"fieldname": "deduction_account", "fieldtype": "Link", "label": "Deduction Account", "options": "Account"},
+  {"fieldname": "cost_center", "fieldtype": "Link", "label": "Cost Center", "options": "Cost Center"},
+  {"fieldname": "edit_item_rate", "fieldtype": "Check", "label": "Allow Edit Item Rate"},
+  {"fieldname": "table_list", "fieldtype": "Small Text", "label": "Restaurant Tables (one per line)"},
+  {"fieldname": "mode_of_payment_details_section", "fieldtype": "Section Break", "label": "Modes of Payment"},
+  {"fieldname": "mode_of_payment_details", "fieldtype": "Table", "label": "Modes of Payment", "options": "POS Mode of Payment Row"},
+  {"fieldname": "sales_person_details_section", "fieldtype": "Section Break", "label": "Sales Persons"},
+  {"fieldname": "sales_person_details", "fieldtype": "Table", "label": "Sales Persons", "options": "POS Sales Person Row"},
+  {"fieldname": "print_format_details_section", "fieldtype": "Section Break", "label": "Print Formats"},
+  {"fieldname": "print_format_details", "fieldtype": "Table", "label": "Print Formats", "options": "POS Print Format Row"}
+ ],
+ "links": [],
+ "modified": "2026-05-18 00:00:00",
+ "modified_by": "Administrator",
+ "module": "POS API",
+ "name": "POS Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {"create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "role": "System Manager", "share": 1, "write": 1}
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
