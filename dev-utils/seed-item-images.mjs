@@ -2,11 +2,14 @@
 // Seed Frappe Item.image with free LoremFlickr food photos for items
 // that are currently missing an image.
 //
-// Usage:
-//   FRAPPE_URL=https://electronpos.tbo365.cloud \
-//   FRAPPE_USER=api@gmail.com \
-//   FRAPPE_PASS='Frappe!123' \
+// Usage (token auth — preferred):
+//   FRAPPE_URL=http://aiwapos.localhost:8000 \
+//   FRAPPE_API_KEY=xxxxxxxx \
+//   FRAPPE_API_SECRET=yyyyyyyy \
 //   node dev-utils/seed-item-images.mjs [--dry-run] [--overwrite]
+//
+// Or with username/password:
+//   FRAPPE_URL=... FRAPPE_USER=... FRAPPE_PASS=... node dev-utils/seed-item-images.mjs
 //
 // Flags:
 //   --dry-run    Show what would change without writing.
@@ -14,18 +17,21 @@
 
 import process from 'node:process';
 
-const BASE = (process.env.FRAPPE_URL || 'https://electronpos.tbo365.cloud').replace(/\/$/, '');
+const BASE = (process.env.FRAPPE_URL || 'http://aiwapos.localhost:8000').replace(/\/$/, '');
 const USER = process.env.FRAPPE_USER;
 const PASS = process.env.FRAPPE_PASS;
+const KEY = process.env.FRAPPE_API_KEY;
+const SECRET = process.env.FRAPPE_API_SECRET;
 const DRY = process.argv.includes('--dry-run');
 const OVERWRITE = process.argv.includes('--overwrite');
 
-if (!USER || !PASS) {
-  console.error('Set FRAPPE_USER and FRAPPE_PASS env vars.');
+const useToken = Boolean(KEY && SECRET);
+if (!useToken && !(USER && PASS)) {
+  console.error('Set either FRAPPE_API_KEY+FRAPPE_API_SECRET, or FRAPPE_USER+FRAPPE_PASS.');
   process.exit(1);
 }
 
-// Cookie jar
+// Cookie jar (only used for password auth)
 let cookieHeader = '';
 function captureCookies(res) {
   const set = res.headers.getSetCookie?.() || [];
@@ -44,7 +50,22 @@ function captureCookies(res) {
   cookieHeader = [...jar.entries()].map(([k, v]) => `${k}=${v}`).join('; ');
 }
 
+function authHeaders() {
+  if (useToken) return { Authorization: `token ${KEY}:${SECRET}` };
+  return cookieHeader ? { Cookie: cookieHeader } : {};
+}
+
 async function login() {
+  if (useToken) {
+    // Verify token works.
+    const res = await fetch(`${BASE}/api/method/frappe.auth.get_logged_user`, {
+      headers: authHeaders(),
+    });
+    if (!res.ok) throw new Error(`Token auth failed: HTTP ${res.status}`);
+    const j = await res.json();
+    console.log(`Authenticated as ${j.message}.`);
+    return;
+  }
   const body = new URLSearchParams({ usr: USER, pwd: PASS }).toString();
   const res = await fetch(`${BASE}/api/method/login`, {
     method: 'POST',
@@ -58,7 +79,7 @@ async function login() {
 }
 
 async function api(method, path, body) {
-  const headers = { Cookie: cookieHeader, Accept: 'application/json' };
+  const headers = { ...authHeaders(), Accept: 'application/json' };
   if (body) headers['Content-Type'] = 'application/json';
   const res = await fetch(`${BASE}${path}`, {
     method,
@@ -117,11 +138,51 @@ function queryFor(itemName) {
   return safe ? `${safe},food` : 'food,dish';
 }
 
-function imageUrlFor(itemName) {
+function loremFlickrUrl(itemName) {
   const q = queryFor(itemName);
-  // `lock` makes the chosen image stable per item (deterministic from name).
   const lock = Math.abs([...slug(itemName)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 0));
   return `https://loremflickr.com/640/480/${encodeURIComponent(q)}?lock=${lock}`;
+}
+
+// Generate progressively-simpler search candidates for TheMealDB lookups.
+// e.g. "Veg Hakka Noodles" -> ["veg hakka noodles", "hakka noodles", "noodles"]
+function mealDbCandidates(itemName) {
+  const stop = new Set(['veg', 'special', 'spicy', 'hot', 'mini', 'aiwa', 'signature', "chef's", 'chefs', 'combo', 'platter']);
+  const words = itemName
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]+/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w && !stop.has(w));
+  const out = new Set();
+  if (words.length) out.add(words.join(' '));
+  for (let i = 1; i < words.length; i++) out.add(words.slice(i).join(' '));
+  for (const w of words) out.add(w);
+  return [...out];
+}
+
+const mealDbCache = new Map();
+async function mealDbLookup(query) {
+  if (mealDbCache.has(query)) return mealDbCache.get(query);
+  const url = `https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(query)}`;
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const j = await r.json();
+    const thumb = j.meals?.[0]?.strMealThumb || null;
+    mealDbCache.set(query, thumb);
+    return thumb;
+  } catch {
+    mealDbCache.set(query, null);
+    return null;
+  }
+}
+
+async function imageUrlFor(itemName) {
+  for (const cand of mealDbCandidates(itemName)) {
+    const hit = await mealDbLookup(cand);
+    if (hit) return { url: hit, source: `mealdb(${cand})` };
+  }
+  return { url: loremFlickrUrl(itemName), source: 'loremflickr' };
 }
 
 async function fetchAllItems() {
@@ -151,7 +212,7 @@ async function setImage(name, url) {
     value: url,
   }).toString();
   const headers = {
-    Cookie: cookieHeader,
+    ...authHeaders(),
     Accept: 'application/json',
     'Content-Type': 'application/x-www-form-urlencoded',
   };
@@ -177,8 +238,8 @@ async function setImage(name, url) {
   for (const it of targets) {
     const docName = it.name || it.item_code;
     const label = it.item_name || docName;
-    const url = imageUrlFor(label);
-    console.log(`${DRY ? '[dry]' : '[set]'} ${docName}  ::  ${label}  ->  ${url}`);
+    const { url, source } = await imageUrlFor(label);
+    console.log(`${DRY ? '[dry]' : '[set]'} ${docName}  ::  ${label}  [${source}]  ->  ${url}`);
     if (DRY) continue;
     try {
       await setImage(docName, url);
